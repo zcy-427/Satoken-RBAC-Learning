@@ -1,0 +1,35 @@
+# Satoken-RBAC-Learning Git ignore rules
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Java and Maven
+target/
+*.class
+*.jar
+*.war
+*.log
+
+# Node and frontend builds
+node_modules/
+dist/
+.vite/
+coverage/
+
+# IDE and operating system files
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Runtime data
+logs/
+uploads/
+data/
+tmp/
+temp/
