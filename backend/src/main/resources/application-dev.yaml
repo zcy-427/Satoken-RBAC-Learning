@@ -1,0 +1,27 @@
+# 本文件用于配置本地开发环境的数据库、Redis 和接口文档
+spring:
+  datasource:
+    url: "${DB_URL:jdbc:mysql://127.0.0.1:3306/satoken_rbac?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}"
+    username: "${DB_USERNAME:root}"
+    password: "${DB_PASSWORD:}"
+
+  data:
+    redis:
+      host: "${REDIS_HOST:127.0.0.1}"
+      port: ${REDIS_PORT:6379}
+      password: "${REDIS_PASSWORD:}"
+      database: ${REDIS_DATABASE:0}
+      connect-timeout: 3s
+      timeout: 3s
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html

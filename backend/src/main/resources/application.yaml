@@ -1,3 +1,22 @@
+# 本文件定义应用公共配置和 Sa-Token 会话规则
+server:
+  port: ${SERVER_PORT:8080}
+
 spring:
   application:
     name: satoken-rbac-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  timeout: 604800
+  active-timeout: 1800
+  is-concurrent: true
+  is-share: false
+  max-login-count: 5
+  token-style: uuid
+  is-read-header: true
+  is-read-cookie: false
+  is-read-body: false
