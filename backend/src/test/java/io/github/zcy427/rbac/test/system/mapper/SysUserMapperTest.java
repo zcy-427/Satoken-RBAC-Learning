@@ -38,6 +38,9 @@ public class SysUserMapperTest {
 
         assertThat(savedUser).isNotNull();
         assertThat(savedUser.getUsername()).isEqualTo(user.getUsername());
+        assertThat(savedUser.getMustChangePassword()).isTrue();
+        assertThat(savedUser.getLoginFailCount()).isZero();
+        assertThat(savedUser.getLockedUntil()).isNull();
 
         int deleteRows = sysUserMapper.deleteById(user.getId());
 

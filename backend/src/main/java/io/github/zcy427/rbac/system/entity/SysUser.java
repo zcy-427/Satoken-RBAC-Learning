@@ -36,4 +36,13 @@ public class SysUser extends BaseEntity {
 
     @TableField("last_login_at")
     private LocalDateTime lastLoginAt;
+
+    @TableField("must_change_password")
+    private Boolean mustChangePassword;
+
+    @TableField("login_fail_count")
+    private Integer loginFailCount;
+
+    @TableField("locked_until")
+    private LocalDateTime lockedUntil;
 }
