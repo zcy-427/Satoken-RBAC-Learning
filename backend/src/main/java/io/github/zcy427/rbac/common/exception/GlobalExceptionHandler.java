@@ -19,9 +19,11 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Result<Void>> handleBusinessException(BusinessException e) {
+        ErrorCode errorCode = e.getErrorCode();
+
         return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
-                e.getCode(),
+                errorCode.getHttpStatus(),
+                errorCode.getCode(),
                 e.getMessage()
         );
     }
@@ -37,7 +39,7 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining("; "));
 
         return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
+                ErrorCode.VALIDATION_ERROR.getHttpStatus(),
                 ErrorCode.VALIDATION_ERROR.getCode(),
                 errorMessage
         );
@@ -53,7 +55,7 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining("; "));
 
         return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
+                ErrorCode.VALIDATION_ERROR.getHttpStatus(),
                 ErrorCode.VALIDATION_ERROR.getCode(),
                 errorMessage
         );
@@ -64,7 +66,7 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException e
     ) {
         return buildErrorResponse(
-                HttpStatus.BAD_REQUEST,
+                ErrorCode.REQUEST_BODY_ERROR.getHttpStatus(),
                 ErrorCode.REQUEST_BODY_ERROR.getCode(),
                 ErrorCode.REQUEST_BODY_ERROR.getMessage()
         );
@@ -74,7 +76,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<Void>> handleException(Exception e) {
         log.error("服务器内部异常: {}",e.getMessage(),e);
         return buildErrorResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
+                ErrorCode.INTERNAL_ERROR.getHttpStatus(),
                 ErrorCode.INTERNAL_ERROR.getCode(),
                 ErrorCode.INTERNAL_ERROR.getMessage()
         );
