@@ -1,8 +1,12 @@
 package io.github.zcy427.rbac.test.system.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import io.github.zcy427.rbac.system.dto.UserCreateRequest;
+import io.github.zcy427.rbac.system.dto.UserResponse;
 import io.github.zcy427.rbac.system.service.SysUserService;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -13,11 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 // 系统用户接口集成测试
 @SpringBootTest
@@ -179,6 +186,129 @@ class SysUserControllerTest {
         mockMvc.perform(get("/api/v1/users")
                         .param("page", "1")
                         .param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    void updateUserShouldReturnSuccessAndPersistChanges()
+            throws Exception {
+        Long userId = createUser(
+                uniqueUsername(),
+                "修改前昵称",
+                1
+        );
+        String requestBody = """
+                {
+                  "nickname": "修改后昵称",
+                  "avatar": "https://example.com/avatar.png",
+                  "email": "updated@example.com",
+                  "phone": "13800138000",
+                  "gender": 2,
+                  "deptId": 100
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/users/{id}", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.message").value("操作成功"))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
+
+        UserResponse updatedUser =
+                sysUserService.getUserById(userId);
+        assertThat(updatedUser.getNickname()).isEqualTo("修改后昵称");
+        assertThat(updatedUser.getAvatar())
+                .isEqualTo("https://example.com/avatar.png");
+        assertThat(updatedUser.getEmail())
+                .isEqualTo("updated@example.com");
+        assertThat(updatedUser.getPhone()).isEqualTo("13800138000");
+        assertThat(updatedUser.getGender()).isEqualTo(2);
+        assertThat(updatedUser.getDeptId()).isEqualTo("100");
+    }
+
+    @Test
+    void updateUserWithInvalidRequestShouldReturnBadRequest()
+            throws Exception {
+        Long userId = createUser(
+                uniqueUsername(),
+                "原昵称",
+                1
+        );
+        String requestBody = """
+                {
+                  "nickname": "",
+                  "email": "invalid-email"
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/users/{id}", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
+    }
+
+    @Test
+    void updateUserStatusShouldDisableUserAndLogoutSessions()
+            throws Exception {
+        Long userId = createUser(
+                uniqueUsername(),
+                "待禁用用户",
+                1
+        );
+        String requestBody = """
+                {
+                  "status": 0
+                }
+                """;
+
+        try (MockedStatic<StpUtil> stpUtil =
+                     Mockito.mockStatic(StpUtil.class)) {
+            mockMvc.perform(patch(
+                            "/api/v1/users/{id}/status",
+                            userId
+                    )
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data").doesNotExist())
+                    .andExpect(jsonPath("$.traceId").isNotEmpty());
+
+            stpUtil.verify(() -> StpUtil.logout(userId));
+        }
+
+        UserResponse disabledUser =
+                sysUserService.getUserById(userId);
+        assertThat(disabledUser.getStatus()).isZero();
+    }
+
+    @Test
+    void updateUserStatusWithInvalidValueShouldReturnBadRequest()
+            throws Exception {
+        Long userId = createUser(
+                uniqueUsername(),
+                "状态校验用户",
+                1
+        );
+        String requestBody = """
+                {
+                  "status": 2
+                }
+                """;
+
+        mockMvc.perform(patch("/api/v1/users/{id}/status", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code")
                         .value("VALIDATION_ERROR"))

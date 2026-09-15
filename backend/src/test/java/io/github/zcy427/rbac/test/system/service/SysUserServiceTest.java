@@ -1,16 +1,21 @@
 package io.github.zcy427.rbac.test.system.service;
 
+import cn.dev33.satoken.stp.StpUtil;
 import io.github.zcy427.rbac.common.exception.BusinessException;
 import io.github.zcy427.rbac.common.exception.ErrorCode;
+import io.github.zcy427.rbac.common.result.PageResult;
 import io.github.zcy427.rbac.common.security.PasswordHasher;
 import io.github.zcy427.rbac.system.dto.UserCreateRequest;
+import io.github.zcy427.rbac.system.dto.UserQueryRequest;
+import io.github.zcy427.rbac.system.dto.UserResponse;
+import io.github.zcy427.rbac.system.dto.UserStatusUpdateRequest;
+import io.github.zcy427.rbac.system.dto.UserUpdateRequest;
 import io.github.zcy427.rbac.system.entity.SysUser;
 import io.github.zcy427.rbac.system.mapper.SysUserMapper;
 import io.github.zcy427.rbac.system.service.SysUserService;
-import io.github.zcy427.rbac.common.result.PageResult;
-import io.github.zcy427.rbac.system.dto.UserQueryRequest;
-import io.github.zcy427.rbac.system.dto.UserResponse;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -167,6 +172,140 @@ class SysUserServiceTest {
                     assertThat(user.getStatus()).isEqualTo(1);
                     assertThat(user.getId()).isNotBlank();
                 });
+    }
+
+    @Test
+    void shouldUpdateUserBasicInfo() {
+        String username = "update_" + UUID.randomUUID();
+        Long userId = sysUserService.createUser(
+                createRequest(username, "TestPassword123!")
+        );
+
+        UserUpdateRequest request = new UserUpdateRequest();
+        request.setNickname("  修改后的昵称  ");
+        request.setAvatar("https://example.com/avatar.png");
+        request.setEmail("updated@example.com");
+        request.setPhone("13800138000");
+        request.setGender(2);
+        request.setDeptId(100L);
+
+        sysUserService.updateUser(userId, request);
+
+        SysUser updatedUser = sysUserMapper.selectById(userId);
+
+        assertThat(updatedUser).isNotNull();
+        assertThat(updatedUser.getUsername()).isEqualTo(username);
+        assertThat(updatedUser.getNickname()).isEqualTo("修改后的昵称");
+        assertThat(updatedUser.getAvatar())
+                .isEqualTo("https://example.com/avatar.png");
+        assertThat(updatedUser.getEmail())
+                .isEqualTo("updated@example.com");
+        assertThat(updatedUser.getPhone()).isEqualTo("13800138000");
+        assertThat(updatedUser.getGender()).isEqualTo(2);
+        assertThat(updatedUser.getDeptId()).isEqualTo(100L);
+    }
+
+    @Test
+    void shouldClearOptionalFieldsWhenUpdatingUser() {
+        UserCreateRequest createRequest = createRequest(
+                "clear_" + UUID.randomUUID(),
+                "TestPassword123!"
+        );
+        createRequest.setEmail("before@example.com");
+        createRequest.setPhone("13800138000");
+        createRequest.setGender(1);
+        createRequest.setDeptId(100L);
+
+        Long userId = sysUserService.createUser(createRequest);
+
+        UserUpdateRequest request = new UserUpdateRequest();
+        request.setNickname("保留昵称");
+        request.setAvatar(" ");
+        request.setEmail(" ");
+        request.setPhone(null);
+        request.setGender(null);
+        request.setDeptId(null);
+
+        sysUserService.updateUser(userId, request);
+
+        SysUser updatedUser = sysUserMapper.selectById(userId);
+
+        assertThat(updatedUser.getNickname()).isEqualTo("保留昵称");
+        assertThat(updatedUser.getAvatar()).isNull();
+        assertThat(updatedUser.getEmail()).isNull();
+        assertThat(updatedUser.getPhone()).isNull();
+        assertThat(updatedUser.getGender()).isZero();
+        assertThat(updatedUser.getDeptId()).isNull();
+    }
+
+    @Test
+    void shouldRejectUpdatingMissingUser() {
+        UserUpdateRequest request = new UserUpdateRequest();
+        request.setNickname("不存在的用户");
+
+        assertThatThrownBy(
+                () -> sysUserService.updateUser(Long.MAX_VALUE, request)
+        ).isInstanceOfSatisfying(
+                BusinessException.class,
+                exception -> assertThat(exception.getErrorCode())
+                        .isEqualTo(ErrorCode.USER_NOT_FOUND)
+        );
+    }
+
+    @Test
+    void shouldDisableUserAndLogoutAccountSessions() {
+        Long userId = sysUserService.createUser(
+                createRequest(
+                        "disable_" + UUID.randomUUID(),
+                        "TestPassword123!"
+                )
+        );
+        UserStatusUpdateRequest request = new UserStatusUpdateRequest();
+        request.setStatus(0);
+
+        try (MockedStatic<StpUtil> stpUtil =
+                     Mockito.mockStatic(StpUtil.class)) {
+            sysUserService.updateUserStatus(userId, request);
+            stpUtil.verify(() -> StpUtil.logout(userId));
+        }
+
+        SysUser disabledUser = sysUserMapper.selectById(userId);
+        assertThat(disabledUser.getStatus()).isZero();
+    }
+
+    @Test
+    void shouldEnableUser() {
+        UserCreateRequest createRequest = createRequest(
+                "enable_" + UUID.randomUUID(),
+                "TestPassword123!"
+        );
+        createRequest.setStatus(0);
+        Long userId = sysUserService.createUser(createRequest);
+
+        UserStatusUpdateRequest request = new UserStatusUpdateRequest();
+        request.setStatus(1);
+
+        sysUserService.updateUserStatus(userId, request);
+
+        SysUser enabledUser = sysUserMapper.selectById(userId);
+        assertThat(enabledUser.getStatus()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldRejectUpdatingStatusOfMissingUser() {
+        UserStatusUpdateRequest request = new UserStatusUpdateRequest();
+        request.setStatus(0);
+
+        assertThatThrownBy(
+                () -> sysUserService.updateUserStatus(
+                        Long.MAX_VALUE,
+                        request
+                )
+        ).isInstanceOfSatisfying(
+                BusinessException.class,
+                exception -> assertThat(exception.getErrorCode())
+                        .isEqualTo(ErrorCode.USER_NOT_FOUND)
+        );
     }
 
     private String uniqueQueryPrefix() {
