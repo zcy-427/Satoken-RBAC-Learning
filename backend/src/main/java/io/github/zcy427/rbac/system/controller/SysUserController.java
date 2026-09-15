@@ -5,6 +5,10 @@ import io.github.zcy427.rbac.common.result.Result;
 import io.github.zcy427.rbac.system.dto.UserCreateRequest;
 import io.github.zcy427.rbac.system.dto.UserQueryRequest;
 import io.github.zcy427.rbac.system.dto.UserResponse;
+import io.github.zcy427.rbac.system.dto.UserStatusUpdateRequest;
+import io.github.zcy427.rbac.system.dto.UserUpdateRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import io.github.zcy427.rbac.system.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -71,6 +75,38 @@ public class SysUserController {
         return ResponseEntity.ok(
                 Result.success(
                         page,
+                        UUID.randomUUID().toString()
+                )
+        );
+    }
+
+    @Operation(summary = "修改用户基础信息")
+    @PutMapping("/{id}")
+    public ResponseEntity<Result<Void>> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UserUpdateRequest request
+    ) {
+        sysUserService.updateUser(id, request);
+
+        return ResponseEntity.ok(
+                Result.<Void>success(
+                        null,
+                        UUID.randomUUID().toString()
+                )
+        );
+    }
+
+    @Operation(summary = "修改用户状态")
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Result<Void>> updateUserStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UserStatusUpdateRequest request
+    ) {
+        sysUserService.updateUserStatus(id, request);
+
+        return ResponseEntity.ok(
+                Result.<Void>success(
+                        null,
                         UUID.randomUUID().toString()
                 )
         );

@@ -1,5 +1,6 @@
 package io.github.zcy427.rbac.system.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -10,6 +11,8 @@ import io.github.zcy427.rbac.common.security.PasswordHasher;
 import io.github.zcy427.rbac.system.dto.UserCreateRequest;
 import io.github.zcy427.rbac.system.dto.UserQueryRequest;
 import io.github.zcy427.rbac.system.dto.UserResponse;
+import io.github.zcy427.rbac.system.dto.UserStatusUpdateRequest;
+import io.github.zcy427.rbac.system.dto.UserUpdateRequest;
 import io.github.zcy427.rbac.system.entity.SysUser;
 import io.github.zcy427.rbac.system.mapper.SysUserMapper;
 import io.github.zcy427.rbac.system.service.SysUserService;
@@ -78,8 +81,8 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<UserResponse> pageUsers(UserQueryRequest request) {
-        String username = normalizeKeyword(request.getUsername());
-        String nickname = normalizeKeyword(request.getNickname());
+        String username = normalizeText(request.getUsername());
+        String nickname = normalizeText(request.getNickname());
 
         LambdaQueryWrapper<SysUser> queryWrapper =
                 Wrappers.<SysUser>lambdaQuery()
@@ -112,8 +115,58 @@ public class SysUserServiceImpl implements SysUserService {
         );
     }
 
-    private String normalizeKeyword(String value) {
+    // 修改用户基础信息，允许将可选字段清空
+    @Override
+    @Transactional
+    public void updateUser(Long id, UserUpdateRequest request) {
+        ensureUserExists(id);
+
+        sysUserMapper.update(
+                null,
+                Wrappers.<SysUser>lambdaUpdate()
+                        .eq(SysUser::getId, id)
+                        .set(SysUser::getNickname, request.getNickname().trim())
+                        .set(SysUser::getAvatar, normalizeText(request.getAvatar()))
+                        .set(SysUser::getEmail, normalizeText(request.getEmail()))
+                        .set(SysUser::getPhone, normalizeText(request.getPhone()))
+                        .set(
+                                SysUser::getGender,
+                                request.getGender() == null ? 0 : request.getGender()
+                        )
+                        .set(SysUser::getDeptId, request.getDeptId())
+        );
+    }
+
+    // 修改用户状态，禁用时注销该账号的全部客户端
+    @Override
+    @Transactional
+    public void updateUserStatus(
+            Long id,
+            UserStatusUpdateRequest request
+    ) {
+        ensureUserExists(id);
+
+        sysUserMapper.update(
+                null,
+                Wrappers.<SysUser>lambdaUpdate()
+                        .eq(SysUser::getId, id)
+                        .set(SysUser::getStatus, request.getStatus())
+        );
+
+        if (Integer.valueOf(0).equals(request.getStatus())) {
+            StpUtil.logout(id);
+        }
+    }
+
+    private String normalizeText(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    // 确保目标用户存在，统一抛出用户不存在异常
+    private void ensureUserExists(Long id) {
+        if (sysUserMapper.selectById(id) == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
     }
 
     // 将用户实体转换为安全的接口响应，不返回密码等内部字段
