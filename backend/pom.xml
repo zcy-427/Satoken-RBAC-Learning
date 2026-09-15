@@ -92,6 +92,13 @@
 			<artifactId>lombok</artifactId>
 		</dependency>
 
+		<!-- MyBatis-Plus 分页插件依赖 -->
+		<dependency>
+			<groupId>com.baomidou</groupId>
+			<artifactId>mybatis-plus-jsqlparser</artifactId>
+			<version>${mybatis-plus.version}</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis-test</artifactId>
