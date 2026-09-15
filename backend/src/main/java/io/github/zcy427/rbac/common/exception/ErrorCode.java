@@ -12,6 +12,7 @@ public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "参数校验失败"),
     REQUEST_BODY_ERROR(HttpStatus.BAD_REQUEST, "REQUEST_BODY_ERROR", "请求体格式错误"),
     USERNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "USERNAME_ALREADY_EXISTS", "用户名已存在"),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "用户不存在"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "服务器内部错误");
 
     private final HttpStatus httpStatus;
