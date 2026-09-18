@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -313,6 +314,50 @@ class SysUserControllerTest {
                 .andExpect(jsonPath("$.code")
                         .value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    void deleteUserShouldReturnSuccessAndHideDeletedUser()
+            throws Exception {
+        Long userId = createUser(
+                uniqueUsername(),
+                "待删除用户",
+                1
+        );
+
+        try (MockedStatic<StpUtil> stpUtil =
+                     Mockito.mockStatic(StpUtil.class)) {
+            mockMvc.perform(delete("/api/v1/users/{id}", userId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.message").value("操作成功"))
+                    .andExpect(jsonPath("$.data").doesNotExist())
+                    .andExpect(jsonPath("$.traceId").isNotEmpty());
+
+            stpUtil.verify(() -> StpUtil.logout(userId));
+        }
+
+        mockMvc.perform(get("/api/v1/users/{id}", userId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    void deleteMissingUserShouldReturnNotFound() throws Exception {
+        try (MockedStatic<StpUtil> stpUtil =
+                     Mockito.mockStatic(StpUtil.class)) {
+            mockMvc.perform(delete(
+                            "/api/v1/users/{id}",
+                            Long.MAX_VALUE
+                    ))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code")
+                            .value("USER_NOT_FOUND"))
+                    .andExpect(jsonPath("$.message")
+                            .value("用户不存在"));
+
+            stpUtil.verifyNoInteractions();
+        }
     }
 
     private String uniqueUsername() {

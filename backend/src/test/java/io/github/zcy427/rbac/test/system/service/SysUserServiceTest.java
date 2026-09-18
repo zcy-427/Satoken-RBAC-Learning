@@ -308,6 +308,36 @@ class SysUserServiceTest {
         );
     }
 
+    @Test
+    void shouldLogicDeleteUserAndLogoutAccountSessions() {
+        Long userId = sysUserService.createUser(
+                createRequest(
+                        "delete_" + UUID.randomUUID(),
+                        "TestPassword123!"
+                )
+        );
+
+        try (MockedStatic<StpUtil> stpUtil =
+                     Mockito.mockStatic(StpUtil.class)) {
+            sysUserService.deleteUser(userId);
+
+            stpUtil.verify(() -> StpUtil.logout(userId));
+        }
+
+        assertThat(sysUserMapper.selectById(userId)).isNull();
+    }
+
+    @Test
+    void shouldRejectDeletingMissingUser() {
+        assertThatThrownBy(
+                () -> sysUserService.deleteUser(Long.MAX_VALUE)
+        ).isInstanceOfSatisfying(
+                BusinessException.class,
+                exception -> assertThat(exception.getErrorCode())
+                        .isEqualTo(ErrorCode.USER_NOT_FOUND)
+        );
+    }
+
     private String uniqueQueryPrefix() {
         return "query_" + UUID.randomUUID()
                 .toString()
