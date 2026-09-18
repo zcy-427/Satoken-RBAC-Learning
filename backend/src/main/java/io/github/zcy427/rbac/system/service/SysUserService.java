@@ -18,4 +18,6 @@ public interface SysUserService {
     void updateUser(Long id, UserUpdateRequest request);
 
     void updateUserStatus(Long id, UserStatusUpdateRequest request);
+
+    void deleteUser(Long id);
 }

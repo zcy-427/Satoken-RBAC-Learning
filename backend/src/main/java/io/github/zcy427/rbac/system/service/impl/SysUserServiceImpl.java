@@ -158,6 +158,21 @@ public class SysUserServiceImpl implements SysUserService {
         }
     }
 
+    // 逻辑删除用户，并注销该用户的全部登录会话
+    @Override
+    @Transactional
+    public void deleteUser(Long id) {
+        ensureUserExists(id);
+
+        int affectedRows = sysUserMapper.deleteById(id);
+
+        if (affectedRows != 1) {
+            throw new IllegalStateException("删除用户失败");
+        }
+
+        StpUtil.logout(id);
+    }
+
     private String normalizeText(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
