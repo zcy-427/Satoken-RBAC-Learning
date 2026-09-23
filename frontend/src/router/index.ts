@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { useAuthStore } from '@/stores/auth'
+
 // Central route definitions for public and authenticated layouts.
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -29,6 +31,21 @@ const router = createRouter({
       meta: { title: '页面不存在' },
     },
   ],
+})
+
+router.beforeEach((to) => {
+  const authStore = useAuthStore()
+
+  if (to.name !== 'login' && !authStore.isAuthenticated) {
+    return {
+      name: 'login',
+      query: { redirect: to.fullPath },
+    }
+  }
+
+  if (to.name === 'login' && authStore.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
 })
 
 router.afterEach((to) => {
